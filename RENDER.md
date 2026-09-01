@@ -71,6 +71,7 @@ git push -u origin HEAD
 
 ## اگر Deploy خراب شد
 
+- **Build fail / Cannot find module `@tailwindcss/postcss`:** بیلد باید `npm ci --include=dev` باشد؛ Tailwind برای `next build` لازم است.
 - **Build fail / Node version:** در Environment باید `NODE_VERSION=22.16.0` باشد.
 - **Mongo timeout / ECONNREFUSED:** Atlas IP Allowlist و رشته اتصال (نام دیتابیس `dating-app`).
 - **API همه درخواست‌ها را رد می‌کند:** `TELEGRAM_BOT_TOKEN` خالی است.
