@@ -1,5 +1,20 @@
-export const ADMIN_TELEGRAM_ID = 6605507448;
+function adminTelegramIds(): number[] {
+  const raw = (process.env.ADMIN_TELEGRAM_ID || '').trim();
+
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(/[,\s]+/)
+    .map((value) => Number(value))
+    .filter((id) => Number.isSafeInteger(id) && id > 0);
+}
 
 export function isAdminTelegramId(telegramId: number): boolean {
-  return telegramId === ADMIN_TELEGRAM_ID;
+  if (!Number.isSafeInteger(telegramId) || telegramId <= 0) {
+    return false;
+  }
+
+  return adminTelegramIds().includes(telegramId);
 }

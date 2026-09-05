@@ -31,3 +31,5 @@ services:
         sync: false
       - key: TELEGRAM_2FA_CHANNEL_ID
         sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
