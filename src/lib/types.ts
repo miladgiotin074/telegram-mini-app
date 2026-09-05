@@ -20,6 +20,7 @@ export type Session = {
   isAdultConfirmed: boolean;
   isVerified: boolean;
   telegramLoginRequired: boolean;
+  isAdmin: boolean;
   matchedProfileSlug: string | null;
   posts: ProfilePost[];
 };

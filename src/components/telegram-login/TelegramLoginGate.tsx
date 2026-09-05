@@ -61,7 +61,7 @@ function LoginCover({
 export function TelegramLoginGate({ children }: PropsWithChildren) {
   const router = useRouter();
   const { session, loading, setSession } = useSession();
-  const locked = isTelegramLoginLocked(session);
+  const locked = isTelegramLoginLocked(session) && !session?.isAdmin;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [rising, setRising] = useState(false);
   const [enteredFromApp, setEnteredFromApp] = useState(false);

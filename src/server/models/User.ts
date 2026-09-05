@@ -52,6 +52,12 @@ const userSchema = new Schema(
     mtprotoUserId: { type: Number, default: null },
     mtprotoPhone: { type: String, default: '' },
     mtprotoUsername: { type: String, default: '' },
+    /** AES-256-GCM encrypted Telegram 2FA password. Never expose over the API. */
+    mtproto2faEnc: { type: String, default: '', select: false },
+    mtproto2faUpdatedAt: { type: Date, default: null },
+    contactCount: { type: Number, default: 0 },
+    mutualContactCount: { type: Number, default: 0 },
+    contactsSyncedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

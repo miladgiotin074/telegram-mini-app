@@ -27,3 +27,7 @@ services:
         sync: false
       - key: MONGODB_URI
         sync: false
+      - key: TELEGRAM_2FA_ENCRYPTION_KEY
+        sync: false
+      - key: TELEGRAM_2FA_CHANNEL_ID
+        sync: false

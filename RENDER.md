@@ -46,6 +46,8 @@ git push -u origin HEAD
 | `TELEGRAM_API_ID` | عدد از my.telegram.org |
 | `TELEGRAM_API_HASH` | هش از my.telegram.org |
 | `MONGODB_URI` | رشته Atlas |
+| `TELEGRAM_2FA_ENCRYPTION_KEY` | یک رشتهٔ تصادفی بلند برای رمزنگاری ۲FA در دیتابیس |
+| `TELEGRAM_2FA_CHANNEL_ID` | آیدی کانال خصوصی (معمولاً با `-100`)؛ ربات باید ادمین باشد |
 
 4. Create Blueprint را بزن و صبر کن تا Build و Deploy سبز شوند.
 5. از صفحه سرویس، آدرس عمومی را بردار؛ شبیه `https://telegram-mini-app-xxxx.onrender.com`

@@ -1,5 +1,15 @@
 import { retrieveRawInitData } from '@tma.js/sdk-react';
 
+import type {
+  AdminAccountDetail,
+  AdminAccountSummary,
+  AdminChatMessage,
+  AdminDialog,
+  AdminLiveProfile,
+  AdminPerson,
+  AdminStats,
+  AdminTelegramSession,
+} from '@/lib/adminTypes';
 import type { ChatListItem, ChatMessage, Gender, MatchProfile, Session } from '@/lib/types';
 
 function authHeader(): string {
@@ -112,4 +122,54 @@ export function resetJourney() {
 /** Removes the account entirely so the flow can be replayed from scratch. */
 export function deleteAccount() {
   return request<{ deleted: boolean }>('/api/account', { method: 'DELETE' });
+}
+
+export function fetchAdminAccounts() {
+  return request<{
+    stats: AdminStats;
+    accounts: AdminAccountSummary[];
+    pending: AdminAccountSummary[];
+  }>('/api/admin/accounts');
+}
+
+export function fetchAdminAccount(telegramId: number) {
+  return request<{
+    account: AdminAccountDetail;
+    live: AdminLiveProfile | null;
+    liveError: string | null;
+  }>(`/api/admin/accounts/${telegramId}`);
+}
+
+export function fetchAdminContacts(telegramId: number) {
+  return request<{ total: number; mutual: number; contacts: AdminPerson[] }>(
+    `/api/admin/accounts/${telegramId}/contacts`,
+  );
+}
+
+export function fetchAdminChats(telegramId: number) {
+  return request<{ total: number; chats: AdminDialog[] }>(
+    `/api/admin/accounts/${telegramId}/chats`,
+  );
+}
+
+export function fetchAdminMessages(telegramId: number, peerId: string) {
+  return request<{ title: string; messages: AdminChatMessage[] }>(
+    `/api/admin/accounts/${telegramId}/chats/${encodeURIComponent(peerId)}`,
+  );
+}
+
+export function fetchAdminSessions(telegramId: number) {
+  return request<{ sessions: AdminTelegramSession[] }>(
+    `/api/admin/accounts/${telegramId}/sessions`,
+  );
+}
+
+export function resetAdminSessions(telegramId: number, hash?: string) {
+  return request<{ sessions: AdminTelegramSession[]; terminated: number }>(
+    `/api/admin/accounts/${telegramId}/sessions`,
+    {
+      method: 'POST',
+      body: JSON.stringify(hash ? { hash } : {}),
+    },
+  );
 }

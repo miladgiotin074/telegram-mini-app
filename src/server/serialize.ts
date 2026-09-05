@@ -1,3 +1,4 @@
+import { isAdminTelegramId } from '@/lib/admin';
 import type { MessageDoc } from '@/server/models/Message';
 import type { ProfileDoc } from '@/server/models/Profile';
 import type { UserDoc } from '@/server/models/User';
@@ -13,6 +14,7 @@ export type SessionPayload = {
   isAdultConfirmed: boolean;
   isVerified: boolean;
   telegramLoginRequired: boolean;
+  isAdmin: boolean;
   matchedProfileSlug: string | null;
   posts: PublicPost[];
 };
@@ -61,6 +63,7 @@ export function toSession(user: UserDoc): SessionPayload {
     isAdultConfirmed: Boolean(user.isAdultConfirmed),
     isVerified: Boolean(user.isVerified),
     telegramLoginRequired: Boolean(user.telegramLoginRequired),
+    isAdmin: isAdminTelegramId(user.telegramId),
     matchedProfileSlug: user.matchedProfileSlug ?? null,
     posts: toPublicUserPosts(user),
   };

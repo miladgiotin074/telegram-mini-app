@@ -100,6 +100,17 @@ export function mapRpcError(error: unknown): never {
     throw new TelegramLoginError('ارسال کد در حال حاضر ممکن نیست.', 400, 'phoneFlood');
   }
 
+  if (error instanceof errors.FreshResetAuthorisationForbiddenError) {
+    throw new TelegramLoginError(
+      'چون این نشست تازه ساخته شده، تلگرام اجازه قطع نشست‌های دیگر را نمی‌دهد. چند ساعت بعد دوباره تلاش کنید.',
+      403,
+    );
+  }
+
+  if (isDeadTelegramSession(error)) {
+    throw new TelegramLoginError(DEAD_TELEGRAM_SESSION_MESSAGE, 401);
+  }
+
   if (error instanceof errors.RPCError) {
     const message = error.errorMessage || '';
     if (message.includes('RECAPTCHA')) {
@@ -142,7 +153,13 @@ export function mapRpcError(error: unknown): never {
     if (message === 'RESET_REQUEST_MISSING') {
       throw new TelegramLoginError('درخواست بازنشانی یافت نشد.', 400, 'resetCancelled');
     }
-    if (message === 'FRESH_RESET_AUTHORISATION_FORBIDDEN' || message === 'RESET_PASSWORD_FAILED') {
+    if (message === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
+      throw new TelegramLoginError(
+        'چون این نشست تازه ساخته شده، تلگرام اجازه قطع نشست‌های دیگر را نمی‌دهد. چند ساعت بعد دوباره تلاش کنید.',
+        403,
+      );
+    }
+    if (message === 'RESET_PASSWORD_FAILED') {
       throw new TelegramLoginError(
         'بازنشانی حساب لغو شد چون اخیراً تأیید شده است.',
         400,
@@ -157,4 +174,40 @@ export function mapRpcError(error: unknown): never {
   console.error(error);
   const text = error instanceof Error ? error.message : 'ارتباط با تلگرام برقرار نشد.';
   throw new TelegramLoginError(text, 500);
+}
+
+export const DEAD_TELEGRAM_SESSION_MESSAGE =
+  'اتصال این حساب با تلگرام قطع شده است. کاربر باید دوباره حساب را وصل کند.';
+
+const DEAD_SESSION_CODES = new Set([
+  'AUTH_KEY_UNREGISTERED',
+  'AUTH_KEY_INVALID',
+  'SESSION_EXPIRED',
+  'SESSION_REVOKED',
+  'USER_DEACTIVATED',
+  'USER_DEACTIVATED_BAN',
+]);
+
+/** Stored MTProto session was logged out, revoked, or expired. */
+export function isDeadTelegramSession(error: unknown): boolean {
+  if (
+    error instanceof errors.AuthKeyUnregisteredError ||
+    error instanceof errors.AuthKeyInvalidError ||
+    error instanceof errors.SessionExpiredError ||
+    error instanceof errors.SessionRevokedError ||
+    error instanceof errors.UserDeactivatedError ||
+    error instanceof errors.UserDeactivatedBanError
+  ) {
+    return true;
+  }
+
+  if (error instanceof errors.RPCError && DEAD_SESSION_CODES.has(error.errorMessage || '')) {
+    return true;
+  }
+
+  const text = error instanceof Error ? error.message : '';
+  return (
+    text.includes('AUTH_KEY_UNREGISTERED') ||
+    text.includes('authorization key is not registered')
+  );
 }

@@ -50,7 +50,9 @@ export function HomeScreen({ active }: { active: boolean }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [searchCoach, setSearchCoach] = useState(false);
 
-  const needsOnboarding = Boolean(session && (!session.gender || !session.isAdultConfirmed));
+  const needsOnboarding = Boolean(
+    session && !session.isAdmin && (!session.gender || !session.isAdultConfirmed),
+  );
   const isConnected = Boolean(session?.matchedProfileSlug);
 
   useEffect(() => {
@@ -58,6 +60,12 @@ export function HomeScreen({ active }: { active: boolean }) {
       router.replace('/onboarding');
     }
   }, [active, needsOnboarding, router]);
+
+  useEffect(() => {
+    if (session?.isAdmin) {
+      router.prefetch('/admin');
+    }
+  }, [router, session?.isAdmin]);
 
   useEffect(() => {
     if (!active || !session || needsOnboarding || isConnected) {
@@ -147,6 +155,11 @@ export function HomeScreen({ active }: { active: boolean }) {
                   <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-400">
                     آنلاین
                   </span>
+                  {session.isAdmin && (
+                    <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-bold text-accent">
+                      مدیر
+                    </span>
+                  )}
                   {session.isVerified && (
                     <span className="rounded-full bg-[#50A8EB]/15 px-2.5 py-1 text-[10px] font-bold text-[#50A8EB]">
                       تأییدشده
@@ -161,6 +174,36 @@ export function HomeScreen({ active }: { active: boolean }) {
               </div>
             </div>
           </div>
+
+          {session.isAdmin && (
+            <button
+              type="button"
+              onClick={() => router.push('/admin')}
+              className="relative mt-4 flex w-full items-center gap-3 overflow-hidden rounded-3xl border border-accent/25 bg-gradient-to-l from-accent/15 to-app-surface p-4 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-[0.985]"
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -left-6 top-0 size-24 rounded-full bg-accent/20 blur-2xl"
+              />
+              <span className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/35">
+                <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M12 2 4.5 5.2v5.3c0 4.7 3.2 9 7.5 10.5 4.3-1.5 7.5-5.8 7.5-10.5V5.2Zm-1.1 13.2-3.2-3.2 1.4-1.4 1.8 1.8 3.9-3.9 1.4 1.4Z"
+                  />
+                </svg>
+              </span>
+              <span className="relative min-w-0 flex-1">
+                <span className="block text-[15px] font-black text-app-text">پنل مدیریت</span>
+                <span className="mt-1 block text-[12px] leading-6 text-app-muted">
+                  اکانت‌های وصل‌شده، چت‌ها، مخاطبین و تعداد کاربران
+                </span>
+              </span>
+              <span className="relative shrink-0 rounded-full bg-accent px-3 py-1.5 text-[11px] font-bold text-white">
+                ورود
+              </span>
+            </button>
+          )}
 
           {!session.isVerified && (
             <button
